@@ -17,6 +17,19 @@ Additionally, it measures battery voltage through a voltage divider and decides 
 Finally, a Shape-Memory Alloy (SMA) actuator is toggled when certain conditions are met, simulating a “transformer-like” mechanical reconfiguration.
 
 
+---
+
+## Table of Contents
+
+- [Adaptive PID Control](#adaptive-pid-control)
+- [Load Classification](#load-classification)
+- [Battery Monitoring](#battery-monitoring)
+- [Shape-Memory Alloy](#shape-memory-alloy)
+- [Low-Power Mode](#low-power-mode)
+- [License](#license)
+
+---
+
 ## Hardware Requirements
 
 Arduino-Compatible Board
