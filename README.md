@@ -27,8 +27,38 @@ Finally, a Shape-Memory Alloy (SMA) actuator is toggled when certain conditions 
 - [Shape-Memory Alloy](#shape-memory-alloy)
 - [Low-Power Mode](#low-power-mode)
 - [License](#license)
+- [Key Additions](#Key-Additions)
 
 ---
+
+## Key Additions
+
+### Temperature Monitoring (`readMotorTemperature()`)
+- We added a pin (`TEMP_SENSOR_PIN`) and a mock formula for converting ADC values to Celsius.
+- `meltdownAvoidanceProtocol()` tries to reduce speed and prints comedic messages.
+
+---
+
+### Flagellar Mode (`flagellarModeActive`)
+- If enabled, we apply a sine wave modulation in `applyFlagellarOscillation()`.
+- For a servo, we similarly tweak the microsecond command.
+
+---
+
+### Near-100% Nuclear Usage (`optimizeNuclearUsage()`)
+- Purely fictional placeholder function that prints a comedic message about gleaning every bit of nuclear decay.
+
+---
+
+### Nanobot Auto-Repair (`nanobotRepairSystemCheck()`)
+- A random chance triggers “damage,” and then the “nanobots” fix it.
+- In real hardware, you’d have error-check routines or sensor networks to detect actual mechanical/electrical faults.
+
+---
+
+### Meltdown Avoidance (`meltdownAverted`)
+- If the temperature is too high, we try to salvage the situation. If it fails, we shut down.
+
 
 ## Hardware Requirements
 
