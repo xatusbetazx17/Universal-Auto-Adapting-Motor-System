@@ -169,28 +169,34 @@ Arduino Pins:
 Below is the complete Arduino-style source code. Copy this into a file like `main.ino` or `AutoAdaptMotor.ino` in your Arduino IDE or similar environment.
 ~~~
 /************************************************************
- *  Universal Auto-Adapting Motor System (Enhanced Humor Edition)
- *  ---------------------------------------------------------
+ *  Universal Auto-Adapting Motor System (More Realistic Edition)
+ *  -------------------------------------------------------------
  *  This Arduino-style sketch adds:
- *    - Temperature monitoring (avoid meltdown or antimatter creation)
- *    - Flagellar motor mode (for extended or deep-space missions)
- *    - Near-100% nuclear energy optimization (theoretical)
- *    - Nanobot auto-repair system
+ *    1) Temperature monitoring (to reduce power on overheating)
+ *    2) Optimal power usage routines for nuclear battery
+ *    3) Self-diagnostics / maintenance checks (placeholders)
+ *    4) PID-based speed control with load classification
+ *    5) Shape-memory alloy reconfiguration (optional)
+ *    6) Low-power mode for power saving
  * 
- *  NOTE: All references to black holes, FTL travel, or antimatter
- *        are fictional. For real hardware, consider known physics!
+ *  DISCLAIMER:
+ *   - In reality, advanced nuclear batteries, self-repair, 
+ *     and meltdown prevention are complex, heavily regulated topics.
+ *   - This code is provided as a conceptual template.
+ *   - Adapt pinouts, sensor readings, hardware drivers, etc.,
+ *     for your specific system.
  ************************************************************/
 
 // ======================== CONFIG & INCLUDES ========================
-//#define USE_SERVO  // Uncomment if using a standard/continuous servo
-#define USE_BLDCTYPE  // Comment if using a servo
+//#define USE_SERVO    // Uncomment if using a standard or continuous servo
+#define USE_BLDCTYPE  // Comment out if using a servo
 
 #ifdef USE_SERVO
   #include <Servo.h>
 #endif
 
-// Load thresholds (in Amps)
-#define SMALL_LOAD_THRESHOLD     5.0f
+// Thresholds
+#define SMALL_LOAD_THRESHOLD     5.0f   // Example in Amps
 #define MEDIUM_LOAD_THRESHOLD    50.0f
 
 // Example pins
@@ -205,7 +211,7 @@ Below is the complete Arduino-style source code. Copy this into a file like `mai
   Servo motorServo;
 #endif
 
-// Shape-memory alloy
+// Shape-memory alloy (optional transformation)
 #define SMA_PIN               5
 
 // Current sense
@@ -213,19 +219,18 @@ Below is the complete Arduino-style source code. Copy this into a file like `mai
 
 // Battery sense
 #define BATTERY_SENSE_PIN     A0
-#define BATTERY_MIN_VOLTAGE   3.0f
-#define BATTERY_MAX_VOLTAGE   12.0f
+#define BATTERY_MIN_VOLTAGE   3.0f  // Low cutoff
+#define BATTERY_MAX_VOLTAGE   12.0f // Example max from step-up converter
 
-// Temperature sensor (e.g., analog thermistor or other sensor)
+// Temperature sensor (thermistor or analog sensor)
 #define TEMP_SENSOR_PIN       A2  
-#define MAX_SAFE_TEMPERATURE  80.0f  // Above this, we risk meltdown (fictionally)
+#define SAFE_TEMPERATURE_MAX  80.0f  // Example threshold in °C
 
 // Timings
 #define MOTOR_SPEED_CHECK_MS  100
 #define LOOP_DELAY_MS         10
 
 // ============== STRUCTS & ENUMS ==============
-
 enum DeviceType {
   DEVICE_SMALL,
   DEVICE_MEDIUM,
@@ -244,10 +249,6 @@ PIDGains smallGains  = {2.0f, 0.5f, 0.1f};
 PIDGains mediumGains = {3.0f, 0.8f, 0.2f};
 PIDGains largeGains  = {5.0f, 1.0f, 0.5f};
 
-// Additional modes for comedic effect
-bool flagellarModeActive = false;  // True => motor attempts “flagellar-like” motion
-bool meltdownAverted = false;      // We'll set this if we exceed safe temp, but manage to reduce power
-
 // ============== GLOBAL CONTROL VARIABLES ==============
 volatile long encoderCount = 0;
 float currentSpeed = 0.0f;
@@ -263,10 +264,8 @@ float targetSpeed = 100.0f;
 
 DeviceType currentDeviceType = DEVICE_UNKNOWN;
 
-// ============== FORWARD DECLARATIONS ==============
-void onEncoderARise();
-void stopMotor();
-void goToLowPowerMode();
+// Flags or states
+bool meltdownPrevented = false;   // Set true if we reduce speed due to high temp
 
 // ============== SETUP ==============
 void setup() {
@@ -277,15 +276,13 @@ void setup() {
   pinMode(MOTOR_DIR_PIN, OUTPUT);
   pinMode(ENCODER_A_PIN, INPUT_PULLUP);
   pinMode(ENCODER_B_PIN, INPUT_PULLUP);
-
-  // Encoder interrupt
   attachInterrupt(digitalPinToInterrupt(ENCODER_A_PIN), onEncoderARise, RISING);
 
   // Motor off initially
   analogWrite(MOTOR_PWM_PIN, 0);
   digitalWrite(MOTOR_DIR_PIN, LOW);
 #else
-  // Servo approach
+  // Servo
   motorServo.attach(SERVO_PIN);
   motorServo.writeMicroseconds(1500); // neutral for continuous servo
 #endif
@@ -295,45 +292,42 @@ void setup() {
 
   pinMode(CURRENT_SENSE_PIN, INPUT);
   pinMode(BATTERY_SENSE_PIN, INPUT);
-
   pinMode(TEMP_SENSOR_PIN, INPUT);
 
-  Serial.println("System Initialization Complete (Humor Edition).");
+  Serial.println("System Initialization Complete (More Realistic Edition).");
 }
 
 // ============== MAIN LOOP ==============
 void loop() {
-  // 0. Check and attempt auto-repair if any system errors
-  nanobotRepairSystemCheck();
+  // 0. Perform self-diagnostics / maintenance checks
+  performSelfDiagnostics();
 
-  // 1. Check nuclear battery or buffer voltage
+  // 1. Check battery voltage
   float batteryVoltage = readBatteryVoltage();
   if (batteryVoltage < BATTERY_MIN_VOLTAGE) {
-    Serial.println("Voltage below safe threshold. Stopping motor to prevent meltdown or black hole formation...");
+    Serial.println("Voltage below safe threshold. Stopping motor...");
     stopMotor();
     goToLowPowerMode();
     return;
   }
 
-  // 2. Read current usage (for load classification)
+  // 2. Read motor current to classify load
   float motorCurrent = readMotorCurrent();
-
-  // 3. Classify device
   DeviceType detectedType = detectDeviceType(motorCurrent);
   if (detectedType != currentDeviceType) {
     currentDeviceType = detectedType;
     applyPIDGains(currentDeviceType);
   }
 
-  // 4. Temperature check to avoid catastrophic event
+  // 3. Temperature check to prevent overheating
   float currentTemp = readMotorTemperature();
-  if (currentTemp > MAX_SAFE_TEMPERATURE) {
-    Serial.print("WARNING: Overheating (");
+  if (currentTemp > SAFE_TEMPERATURE_MAX) {
+    Serial.print("Overheat warning (");
     Serial.print(currentTemp);
-    Serial.println(" °C)! Attempting meltdown avoidance measures...");
-    meltdownAverted = meltdownAvoidanceProtocol();
-    if (!meltdownAverted) {
-      Serial.println("CRITICAL: Could not avoid meltdown. Stopping motor immediately!");
+    Serial.println("°C). Reducing speed/power...");
+    meltdownPrevented = reduceSpeedDueToOverheat();
+    if (!meltdownPrevented) {
+      Serial.println("CRITICAL: Unable to prevent meltdown—stopping motor.");
       stopMotor();
       goToLowPowerMode();
       return;
@@ -341,7 +335,7 @@ void loop() {
   }
 
 #ifdef USE_BLDCTYPE
-  // 5. Compute current speed (only BLDC example)
+  // 4. Calculate current speed (BLDC with encoder)
   unsigned long now = millis();
   if (now - lastSpeedCheckTime >= MOTOR_SPEED_CHECK_MS) {
     noInterrupts();
@@ -349,62 +343,51 @@ void loop() {
     encoderCount = 0;
     interrupts();
 
-    float pulsesPerRev = 360.0f; // depends on your motor's encoder
-    currentSpeed = (countSnapshot / pulsesPerRev) * 600.0f;
+    // Convert pulses to RPM
+    float pulsesPerRev = 360.0f; // depends on motor's encoder
+    currentSpeed = (countSnapshot / pulsesPerRev) * 600.0f; 
     lastSpeedCheckTime = now;
   }
 
-  // 6. PID control
+  // 5. PID control
   float outputPWM = computePID(targetSpeed, currentSpeed);
-
-  // If in flagellar mode, we might modulate the PWM in a special pattern:
-  if (flagellarModeActive) {
-    outputPWM = applyFlagellarOscillation(outputPWM);
-  }
-
   int pwmValue = (int)constrain(outputPWM, 0, 255);
   analogWrite(MOTOR_PWM_PIN, pwmValue);
 
-  // Direction: Negative target => reverse
+  // Direction (negative target => reverse)
   digitalWrite(MOTOR_DIR_PIN, (targetSpeed < 0.0f) ? HIGH : LOW);
-
 #else
   // Servo approach
-  // Example: map targetSpeed from [0..200] RPM to [1500..2000] microseconds
+  // Example: map targetSpeed [0..200 RPM] => [1500..2000] µs
   int servoCmd = map((int)targetSpeed, 0, 200, 1500, 2000);
   servoCmd = constrain(servoCmd, 1000, 2000);
-
-  // If in flagellar mode, let's say we add a small oscillation
-  if (flagellarModeActive) {
-    servoCmd += (int)(10.0f * sin(millis() * 0.01)); // comedic sine wave
-  }
-
   motorServo.writeMicroseconds(servoCmd);
 #endif
 
-  // 7. SMA "transformation"
+  // 6. Shape-memory alloy transformation
   if (shouldTransform(currentDeviceType, currentSpeed)) {
     activateSMA(true);
   } else {
     activateSMA(false);
   }
 
-  // 8. Optional idle check
+  // 7. Optional idle check
   if (fabs(targetSpeed) < 0.1f) {
-    Serial.println("No speed requested. Entering low power mode...");
+    Serial.println("Target speed near zero. Entering low power mode...");
     stopMotor();
     goToLowPowerMode();
   }
 
-  // 9. Attempt near-100% nuclear energy usage optimization
+  // 8. Optimize usage of nuclear source (conceptual)
   optimizeNuclearUsage();
 
   delay(LOOP_DELAY_MS);
 }
 
 // ============== INTERRUPTS ==============
-// For a BLDC encoder
+
 void onEncoderARise() {
+  // Quadrature read example:
   if (digitalRead(ENCODER_B_PIN) == HIGH) {
     encoderCount++;
   } else {
@@ -414,36 +397,35 @@ void onEncoderARise() {
 
 // ============== HELPER FUNCTIONS ==============
 
-/** Reads the buffer/nuclear battery voltage via a voltage divider. */
+/** Reads battery voltage from the buffer (nano-diamond supply + step-up). */
 float readBatteryVoltage() {
   int adcValue = analogRead(BATTERY_SENSE_PIN);
   float measuredVoltage = (adcValue / 1023.0f) * 5.0f;
-  // Assume a 4:1 divider => battery voltage = measuredVoltage * 4
-  float batteryVoltage = measuredVoltage * 4.0f;
-  return batteryVoltage;
+  // Assume a 4:1 divider
+  return measuredVoltage * 4.0f;
 }
 
-/** Reads motor current from a sensor like ACS712. */
+/** Reads motor current from a sensor (e.g., ACS712). */
 float readMotorCurrent() {
   int sensorValue = analogRead(CURRENT_SENSE_PIN);
   float sensorVoltage = (sensorValue / 1023.0f) * 5.0f;
-  float offsetVoltage = 2.5f;   // zero-current offset
-  float sensitivity = 0.185f;   // V per A (example for ±5A module)
+  float offsetVoltage = 2.5f;  // zero-current offset
+  float sensitivity = 0.185f;  // V/A for ±5A module
   float amps = (sensorVoltage - offsetVoltage) / sensitivity;
   return amps;
 }
 
-/** Reads motor temperature (mock). Replace with real sensor conversion. */
+/** Reads motor temperature from a thermistor or analog sensor. */
 float readMotorTemperature() {
-  // For a real thermistor or sensor, you'd have a calibration curve or library
   int rawValue = analogRead(TEMP_SENSOR_PIN);
   float voltage = (rawValue / 1023.0f) * 5.0f;
-  // Pretend 10mV per °C offset from 0V => purely fictional
-  float temperatureC = voltage * 100.0f; 
-  return temperatureC;
+  // You'd normally do a thermistor conversion. As a placeholder:
+  // Suppose 10mV/°C => voltage * 100 => temperature in °C 
+  // (Adjust based on real sensor curves.)
+  return voltage * 100.0f;
 }
 
-/** Classifies the device load as small, medium, or large, based on current. */
+/** Classifies load by current usage. */
 DeviceType detectDeviceType(float current) {
   if (current < SMALL_LOAD_THRESHOLD) {
     return DEVICE_SMALL;
@@ -454,7 +436,7 @@ DeviceType detectDeviceType(float current) {
   }
 }
 
-/** Applies PID gains depending on the device type. */
+/** Applies different PID gains based on load. */
 void applyPIDGains(DeviceType devType) {
   switch (devType) {
     case DEVICE_SMALL:
@@ -490,26 +472,26 @@ float computePID(float target, float actual) {
   return output;
 }
 
-/** If we're in a "large device" scenario and high speed, shape transform. */
+/** Decides whether to activate shape-memory transformation. */
 bool shouldTransform(DeviceType devType, float speed) {
-  // Example condition: large device type + speed > 80
+  // Example: for large load & speed > 80
   if (devType == DEVICE_LARGE && speed > 80.0f) {
     return true;
   }
   return false;
 }
 
-/** Activates shape-memory alloy. Real hardware needs time/thermal constraints. */
+/** Toggles shape-memory alloy for mechanical transformation. */
 void activateSMA(bool enable) {
   if (enable) {
     digitalWrite(SMA_PIN, HIGH);
-    // Watch for overheating or limit the on-time in real systems
+    // Real system would carefully manage activation time/thermal buildup
   } else {
     digitalWrite(SMA_PIN, LOW);
   }
 }
 
-/** Stops the motor safely. */
+/** Stops the motor. */
 void stopMotor() {
 #ifdef USE_BLDCTYPE
   analogWrite(MOTOR_PWM_PIN, 0);
@@ -519,57 +501,41 @@ void stopMotor() {
 #endif
 }
 
-/** Placeholder for real low-power or sleep. */
+/** Placeholder for real low-power or deep-sleep. */
 void goToLowPowerMode() {
-  Serial.println("Entering low-power mode (placeholder). Goodnight, Universe...");
-  delay(3000);
+  Serial.println("Entering low-power mode. System is idling...");
+  delay(2000); // Real hardware might use MCU sleep
 }
 
-/** Attempt meltdown avoidance if temperature is too high. */
-bool meltdownAvoidanceProtocol() {
-  Serial.println("Initiating meltdown avoidance: reducing speed & power...");
-  // Drastically cut target speed
+/** If temperature is too high, try reducing speed/power. Returns false if impossible. */
+bool reduceSpeedDueToOverheat() {
+  // Example approach: reduce target speed by 50% to lower current draw & heat
   targetSpeed *= 0.5f;
+  // If it's already very low, we might be out of options
   if (targetSpeed < 10.0f) {
-    targetSpeed = 10.0f; // keep minimal rotation to cool?
+    return false; // meltdown unavoidable if we can’t reduce further
   }
-  // Return true if we think we can keep going, false if it's unstoppable
-  // For comedic effect, let's just say it's always salvageable
   return true;
 }
 
-/** If in flagellar mode, apply some wave-like modulation to emulate “flagellar” motion. */
-float applyFlagellarOscillation(float basePWM) {
-  // A sine wave mod to create pulsating effect
-  float timeFactor = millis() * 0.005f; // slower wave
-  float oscillation = 40.0f * sin(timeFactor); // amplitude of 40 in PWM units
-  float newPWM = basePWM + oscillation;
-
-  // Constrain to valid range
-  if (newPWM < 0)   newPWM = 0;
-  if (newPWM > 255) newPWM = 255;
-  return newPWM;
-}
-
-/** Tries to use near-100% of nuclear energy (fictional). 
- *  In reality, you cannot exceed thermodynamic limits or 100% efficiency.
- */
+/** Attempt to optimize usage of the nuclear battery's trickle power (conceptual). */
 void optimizeNuclearUsage() {
-  // Comedic placeholder: we assume we can simply harvest every drop of nuclear decay
-  // In practice, you'd have advanced electronics or iterative MPPT-like algorithms
-  Serial.println("Optimizing nuclear energy usage... (theoretically 100%!)");
-  // Insert real advanced logic here if you dare...
+  // Real systems might implement advanced regulation or MPPT-like strategies
+  // Here, we just log a message
+  Serial.println("Optimizing nuclear battery usage (conceptual)...");
 }
 
-/** Nanobot repair system checks for imaginary damage and “repairs” it. */
-void nanobotRepairSystemCheck() {
-  // For comedic effect, let's pretend there's a random chance of damage
-  int randomChance = random(0, 1000);
-  if (randomChance < 2) {  // ~0.2% chance
-    Serial.println("ALERT: Micro-fracture detected! Deploying nanobots...");
-    // Insert comedic “repair” routine
-    delay(100); // time for the “nanobots” to fix it
-    Serial.println("Nanobots completed repairs. System integrity restored.");
+/** Perform self-diagnostics, simulating a system check or alert. */
+void performSelfDiagnostics() {
+  // Real advanced hardware could check sensor statuses, run redundancy checks, etc.
+  // We'll just simulate a quick check with a random chance of minor fault
+  // (In real code, you'd read hardware registers, error flags, etc.)
+  static unsigned long lastCheck = 0;
+  unsigned long now = millis();
+  if (now - lastCheck > 1000) {
+    lastCheck = now;
+    // Example: potential future expansions
+    // e.g., if a fault is detected => log or try a self-repair routine
   }
 }
 
