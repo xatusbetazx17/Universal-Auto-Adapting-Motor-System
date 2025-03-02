@@ -169,23 +169,32 @@ Arduino Pins:
 Below is the complete Arduino-style source code. Copy this into a file like `main.ino` or `AutoAdaptMotor.ino` in your Arduino IDE or similar environment.
 ~~~
 /************************************************************
- *  Universal Auto-Adapting Motor System (Combined Edition)
- *  ---------------------------------------------------------
+ *  Universal Auto-Adapting Motor System (Nano-Diamond Adapted)
+ *  ------------------------------------------------------------
  *  This sketch merges:
- *    - Battery End-of-Life logic (hibernation, recharge check)
+ *    - Nano-diamond battery + buffer "End-of-Buffer" logic
+ *      (hibernation, recharge check)
  *    - Flagellar motor oscillation
  *    - Temperature-based meltdown avoidance
  *    - PID-based load classification
  *    - Shape-memory alloy transformation
  *    - Low-power/idle modes
  *    - Self-diagnostics placeholders
- * 
+ *
+ *  NOTES ON NANO-DIAMOND BATTERY USAGE:
+ *   - A true nano-diamond battery can last decades/centuries,
+ *     providing a *trickle* of power.
+ *   - Here, we simulate a "buffer" that depletes if load exceeds
+ *     trickle charge over time, leading to hibernation until
+ *     recharged or externally powered.
+ *
  *  DISCLAIMER:
  *   - In reality, advanced nuclear batteries, self-repair,
  *     meltdown prevention, or "flagellar" mechanics are complex
  *     and may be subject to heavy regulation or unproven physics.
  *   - This code is purely a conceptual reference. Adapt pinouts,
- *     sensor formulas, driver hardware, and actual power management.
+ *     sensor formulas, driver hardware, and actual power management
+ *     for a real system.
  ************************************************************/
 
 // ======================== CONFIG & INCLUDES ========================
@@ -227,7 +236,7 @@ Below is the complete Arduino-style source code. Copy this into a file like `mai
 // Current sense
 #define CURRENT_SENSE_PIN          A1
 
-// Battery sense
+// Battery (Buffer) sense
 #define BATTERY_SENSE_PIN          A0
 #define BATTERY_MIN_VOLTAGE        3.0f
 #define BATTERY_MAX_VOLTAGE        12.0f
@@ -240,9 +249,9 @@ Below is the complete Arduino-style source code. Copy this into a file like `mai
 #define MOTOR_SPEED_CHECK_MS       100
 #define LOOP_DELAY_MS              10
 
-// Nano-Diamond Battery End-of-Life simulation
-#define BATTERY_LIFECYCLE_WARN     0.05f  // 5% left => warning
-#define BATTERY_LIFECYCLE_EOFF     0.02f  // 2% => forced hibernation
+// End-of-Buffer simulation (instead of literal isotope depletion)
+#define BUFFER_LIFECYCLE_WARN      0.05f  // 5% => warning
+#define BUFFER_LIFECYCLE_EOFF      0.02f  // 2% => forced hibernation
 
 // Flagellar motor oscillation
 #define FLAGELLAR_AMPLITUDE        0.1f   // 10% amplitude of base PWM
@@ -296,12 +305,12 @@ float targetSpeed = 100.0f;
 DeviceType currentDeviceType = DEVICE_UNKNOWN;
 AdvancedMotorMode currentMotorMode = MODE_BASIC_PID;
 
-// Battery life simulation (1.0 => 100% life, 0.0 => depleted)
-float batteryLifeRatio = 1.0f;
+// Buffer-level simulation (1.0 => 100% buffer, 0.0 => depleted)
+float bufferLifeRatio = 1.0f;
 
 // States / Flags
 bool meltdownPrevented   = false;   // True if we mitigate overheating
-bool systemHibernating   = false;   // True if battery is EOL, awaiting recharge
+bool systemHibernating   = false;   // True if buffer is EOL, awaiting recharge
 
 // ===================== FUNCTION PROTOTYPES =====================
 
@@ -323,7 +332,8 @@ bool reduceSpeedDueToOverheat();
 void optimizeNuclearUsage();
 void performSelfDiagnostics();
 
-float degradeBatteryLife();
+// Replacing degradeBatteryLife() with a buffer drain simulation
+float simulateBufferDrain();
 DeviceType detectDeviceType(float current);
 void applyPIDGains(DeviceType devType);
 
@@ -360,7 +370,7 @@ void setup() {
   pinMode(BATTERY_SENSE_PIN, INPUT);
   pinMode(TEMP_SENSOR_PIN, INPUT);
 
-  Serial.println("System Initialization Complete (Combined Edition).");
+  Serial.println("System Init (Nano-Diamond Battery + Buffer Edition).");
 }
 
 // ========================= MAIN LOOP =========================
@@ -369,10 +379,10 @@ void loop() {
   // If the system is hibernating, check for external recharge
   if (systemHibernating) {
     if (checkExternalRecharge()) {
-      // Reset battery life to full or a certain replenished value
-      batteryLifeRatio = 1.0f;
+      // Reset the buffer to full (or partially charged)
+      bufferLifeRatio = 1.0f;
       systemHibernating = false;
-      Serial.println("Battery replaced/recharged. Exiting hibernation mode!");
+      Serial.println("Buffer recharged/replaced. Exiting hibernation mode!");
     } else {
       // Stay in hibernation
       delay(1000);
@@ -383,27 +393,27 @@ void loop() {
   // 0. Self-diagnostics
   performSelfDiagnostics();
 
-  // 1. Read battery voltage
-  float batteryVoltage = readBatteryVoltage();
-  if (batteryVoltage < BATTERY_MIN_VOLTAGE) {
-    Serial.println("Voltage below safe threshold. Stopping motor...");
+  // 1. Read voltage from the nano-diamond battery + buffer
+  float bufferVoltage = readBatteryVoltage();
+  if (bufferVoltage < BATTERY_MIN_VOLTAGE) {
+    Serial.println("Buffer voltage below safe threshold. Stopping motor...");
     stopMotor();
     goToLowPowerMode();
     return;
   }
 
-  // Degrade battery life ratio conceptually
-  degradeBatteryLife();
+  // Simulate buffer drain to represent usage exceeding trickle recharge
+  simulateBufferDrain();
 
-  // Check end-of-life conditions
-  if (batteryLifeRatio < BATTERY_LIFECYCLE_EOFF) {
+  // Check if the buffer ratio is near depletion
+  if (bufferLifeRatio < BUFFER_LIFECYCLE_EOFF) {
     // Force hibernation
-    Serial.println("[CRITICAL] Battery near depletion. Entering hibernation.");
+    Serial.println("[CRITICAL] Buffer near depletion. Entering hibernation.");
     stopMotor();
     enterHibernationMode();
     return;
-  } else if (batteryLifeRatio < BATTERY_LIFECYCLE_WARN) {
-    Serial.println("[WARNING] Battery life is very low. Please replace or recharge soon.");
+  } else if (bufferLifeRatio < BUFFER_LIFECYCLE_WARN) {
+    Serial.println("[WARNING] Buffer level is very low. Please reduce load or recharge soon.");
   }
 
   // 2. Read motor current => classify load
@@ -483,7 +493,6 @@ void loop() {
 
 // ========================= INTERRUPTS =========================
 
-/** Quadrature encoder interrupt for BLDC approach. */
 void onEncoderARise() {
   if (digitalRead(ENCODER_B_PIN) == HIGH) {
     encoderCount++;
@@ -499,8 +508,7 @@ float runMotorControlWithFlagella(float target, float actual, AdvancedMotorMode 
   float baseOutput = runMotorControl(target, actual, mode);
 
   // Flagellar oscillation
-  float timeFactor = millis() / 1000.0f; 
-  // Sine-wave amplitude is 10% of the baseOutput => "Flagellar" concept
+  float timeFactor = millis() / 1000.0f;
   float oscillation = FLAGELLAR_AMPLITUDE * baseOutput * sin(2.0f * M_PI * timeFactor);
 
   float newOutput = baseOutput + oscillation;
@@ -519,25 +527,20 @@ float runMotorControl(float target, float actual, AdvancedMotorMode mode) {
       return runFOCPlaceholder(target, actual);
 
     case MODE_MULTI_WINDING_LOW:
-      // Possibly limit max speed to 80% for higher torque
       return computePID(target * 0.8f, actual);
 
     case MODE_MULTI_WINDING_HIGH:
-      // Increase possible speed by 20%
       return computePID(target * 1.2f, actual);
 
     case MODE_MAGNETIC_GEAR:
-      // Example ratio effect
       Serial.println("Applying Magnetic Gear ratio (placeholder)...");
       return computePID(target * 0.7f, actual);
 
     case MODE_DIRECT_DRIVE:
-      // Straight PID
       return computePID(target, actual);
 
     case MODE_BASIC_PID:
     default:
-      // Original approach
       return computePID(target, actual);
   }
 }
@@ -556,7 +559,7 @@ float computePID(float target, float actual) {
   float output = (kp * error) + (ki * pidIntegral) + (kd * derivative);
   previousError = error;
 
-  if (output < 0) output = 0; 
+  if (output < 0) output = 0;
   return output;
 }
 
@@ -589,7 +592,7 @@ void goToLowPowerMode() {
   delay(2000);
 }
 
-/** If temperature is too high, reduce speed by 50%. Return false if we can't salvage. */
+/** If temperature is too high, reduce speed by 50%. Return false if we can't fix. */
 bool reduceSpeedDueToOverheat() {
   targetSpeed *= 0.5f;
   if (targetSpeed < 10.0f) {
@@ -598,9 +601,9 @@ bool reduceSpeedDueToOverheat() {
   return true;
 }
 
-/** Attempt to optimize nuclear battery usage (conceptual). */
+/** Attempt to optimize usage of the nuclear battery's trickle power (conceptual). */
 void optimizeNuclearUsage() {
-  Serial.println("Optimizing nuclear battery usage (conceptual)...");
+  Serial.println("Optimizing nano-diamond battery usage (conceptual)...");
 }
 
 /** Perform self-diagnostics (placeholder). */
@@ -626,42 +629,41 @@ void maybeReconfigureMotorMode(DeviceType devType) {
   // #ifdef ENABLE_FOC_MODE
   // currentMotorMode = MODE_FOC;
   // #endif
-  // Default
   currentMotorMode = MODE_BASIC_PID;
 }
 
-/** Checks if an external recharge or battery replacement has occurred. */
+/** Checks if an external recharge or buffer replacement has occurred. */
 bool checkExternalRecharge() {
-  // In real hardware, you'd sense external power or a new battery module.
-  // For demonstration, randomly simulate a 10% chance every 5s
+  // In real hardware, you'd sense external power or a new buffer module.
+  // Here, we simulate a random 10% chance every 5s
   static unsigned long lastCheck = 0;
   unsigned long now = millis();
   if (now - lastCheck > 5000) {
     lastCheck = now;
     int chance = random(0, 100);
     if (chance < 10) {
-      Serial.println("External source detected! Battery can be replenished.");
+      Serial.println("External source detected! Buffer can be replenished.");
       return true;
     }
   }
   return false;
 }
 
-/** Enter hibernation if battery is nearly depleted. */
+/** Enter hibernation if buffer is depleted. */
 void enterHibernationMode() {
   systemHibernating = true;
-  Serial.println("System is now in HIBERNATION, awaiting battery replacement or external power...");
+  Serial.println("System is now in HIBERNATION, awaiting recharge or external power...");
 }
 
-/** Degrade battery life ratio (purely for demonstration). */
-float degradeBatteryLife() {
-  // E.g., degrade by 0.0005 each loop iteration
-  batteryLifeRatio -= 0.0005f;
-  if (batteryLifeRatio < 0.0f) batteryLifeRatio = 0.0f;
-  return batteryLifeRatio;
+/** Simulate the buffer draining faster than the nano-diamond cell can recharge. */
+float simulateBufferDrain() {
+  // e.g., degrade by 0.0005 each loop iteration
+  bufferLifeRatio -= 0.0005f;
+  if (bufferLifeRatio < 0.0f) bufferLifeRatio = 0.0f;
+  return bufferLifeRatio;
 }
 
-/** Classify the motor load based on current. */
+/** Classify motor load based on current. */
 DeviceType detectDeviceType(float current) {
   if (current < SMALL_LOAD_THRESHOLD) {
     return DEVICE_SMALL;
@@ -694,19 +696,19 @@ void applyPIDGains(DeviceType devType) {
   }
 }
 
-/** Reads battery voltage from the buffer. */
+/** Reads buffer voltage (nano-diamond battery + supercap/battery). */
 float readBatteryVoltage() {
   int adcValue = analogRead(BATTERY_SENSE_PIN);
   float measuredVoltage = (adcValue / 1023.0f) * 5.0f;
-  // 4:1 divider assumption
+  // 4:1 divider assumption => multiply by 4
   return measuredVoltage * 4.0f;
 }
 
-/** Reads motor current from a sensor (e.g., ACS712). */
+/** Reads motor current from sensor (e.g., ACS712). */
 float readMotorCurrent() {
   int sensorValue = analogRead(CURRENT_SENSE_PIN);
   float sensorVoltage = (sensorValue / 1023.0f) * 5.0f;
-  float offsetVoltage = 2.5f; 
+  float offsetVoltage = 2.5f;
   float sensitivity = 0.185f; // for ±5A module
   float amps = (sensorVoltage - offsetVoltage) / sensitivity;
   return amps;
